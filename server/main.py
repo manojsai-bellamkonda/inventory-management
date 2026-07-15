@@ -1,8 +1,12 @@
+import threading
+import uuid
+from datetime import datetime, timedelta
+from math import floor
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
-from pydantic import BaseModel
-from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders
+from pydantic import BaseModel, Field
+from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders, restock_orders
 
 app = FastAPI(title="Factory Inventory Management System")
 
@@ -118,6 +122,53 @@ class CreatePurchaseOrderRequest(BaseModel):
     quantity: int
     unit_cost: float
     expected_delivery_date: str
+    notes: Optional[str] = None
+
+# Restocking feature: submitted orders always ship with this fixed lead time
+RESTOCK_LEAD_TIME_DAYS = 10
+# Guards the read-then-append sequence below so concurrent submissions can't
+# race onto the same order_number.
+restock_orders_lock = threading.Lock()
+
+class RestockRecommendation(BaseModel):
+    item_sku: str
+    item_name: str
+    category: str
+    warehouse: str
+    quantity_on_hand: int
+    reorder_point: int
+    unit_cost: float
+    current_demand: int
+    forecasted_demand: int
+    trend: str
+    is_urgent: bool
+    demand_growth_percent: float
+    suggested_quantity: int
+    estimated_cost: float
+
+class RestockRecommendationsResponse(BaseModel):
+    budget: float
+    total_estimated_cost: float
+    remaining_budget: float
+    recommendations: List[RestockRecommendation]
+
+class RestockOrderItemRequest(BaseModel):
+    sku: str
+    quantity: int = Field(gt=0)
+
+class CreateRestockOrderRequest(BaseModel):
+    items: List[RestockOrderItemRequest]
+    notes: Optional[str] = None
+
+class RestockOrder(BaseModel):
+    id: str
+    order_number: str
+    items: List[dict]
+    status: str
+    order_date: str
+    lead_time_days: int
+    expected_delivery: str
+    total_value: float
     notes: Optional[str] = None
 
 # API endpoints
@@ -303,6 +354,160 @@ def get_monthly_trends():
     result = list(months.values())
     result.sort(key=lambda x: x['month'])
     return result
+
+@app.get("/api/restock/recommendations", response_model=RestockRecommendationsResponse)
+def get_restock_recommendations(budget: float):
+    """Get urgency-ranked restock recommendations that fit within a budget.
+
+    Urgency-first: items trending "increasing" AND at/below their inventory
+    reorder_point are ranked ahead of other "increasing" items, each bucket
+    sorted by forecasted demand growth %. The budget is then greedily filled
+    in that rank order.
+    """
+    if budget < 0:
+        raise HTTPException(status_code=400, detail="Budget must be non-negative")
+
+    inventory_by_sku = {item["sku"]: item for item in inventory_items}
+
+    # Quantity already submitted in prior restock orders, per SKU — subtracted
+    # from the target so repeat visits don't recommend (and re-order) the same
+    # shortfall that's already on its way.
+    pending_by_sku = {}
+    for order in restock_orders:
+        for order_item in order["items"]:
+            pending_by_sku[order_item["sku"]] = pending_by_sku.get(order_item["sku"], 0) + order_item["quantity"]
+
+    candidates = []
+    for forecast in demand_forecasts:
+        inv = inventory_by_sku.get(forecast["item_sku"])
+        if inv is None or forecast["trend"].lower() != "increasing":
+            continue
+
+        current = forecast["current_demand"]
+        forecasted = forecast["forecasted_demand"]
+        growth_percent = round((forecasted - current) / current * 100, 1) if current > 0 else 0.0
+
+        is_urgent = inv["quantity_on_hand"] <= inv["reorder_point"]
+        shortfall = max(0, inv["reorder_point"] - inv["quantity_on_hand"])
+        growth_units = max(0, forecasted - current)
+        pending = pending_by_sku.get(inv["sku"], 0)
+        qty_target = shortfall + growth_units - pending
+        if qty_target <= 0:
+            continue  # already fully covered by outstanding restock orders
+
+        candidates.append({
+            "item_sku": inv["sku"],
+            "item_name": inv["name"],
+            "category": inv["category"],
+            "warehouse": inv["warehouse"],
+            "quantity_on_hand": inv["quantity_on_hand"],
+            "reorder_point": inv["reorder_point"],
+            "unit_cost": inv["unit_cost"],
+            "current_demand": current,
+            "forecasted_demand": forecasted,
+            "trend": forecast["trend"],
+            "is_urgent": is_urgent,
+            "demand_growth_percent": growth_percent,
+            "qty_target": qty_target,
+        })
+
+    urgent = sorted([c for c in candidates if c["is_urgent"]], key=lambda c: -c["demand_growth_percent"])
+    others = sorted([c for c in candidates if not c["is_urgent"]], key=lambda c: -c["demand_growth_percent"])
+    ranked = urgent + others
+
+    remaining_budget = budget
+    recommendations = []
+    for c in ranked:
+        if c["unit_cost"] > remaining_budget:
+            continue  # can't afford even 1 unit — skip, keep scanning for a cheaper fit
+
+        suggested_quantity = min(c["qty_target"], floor(remaining_budget / c["unit_cost"]))
+        if suggested_quantity <= 0:
+            continue
+
+        estimated_cost = round(suggested_quantity * c["unit_cost"], 2)
+        remaining_budget = round(remaining_budget - estimated_cost, 2)
+
+        recommendations.append(RestockRecommendation(
+            item_sku=c["item_sku"],
+            item_name=c["item_name"],
+            category=c["category"],
+            warehouse=c["warehouse"],
+            quantity_on_hand=c["quantity_on_hand"],
+            reorder_point=c["reorder_point"],
+            unit_cost=c["unit_cost"],
+            current_demand=c["current_demand"],
+            forecasted_demand=c["forecasted_demand"],
+            trend=c["trend"],
+            is_urgent=c["is_urgent"],
+            demand_growth_percent=c["demand_growth_percent"],
+            suggested_quantity=suggested_quantity,
+            estimated_cost=estimated_cost,
+        ))
+
+    total_estimated_cost = round(budget - remaining_budget, 2)
+
+    return RestockRecommendationsResponse(
+        budget=budget,
+        total_estimated_cost=total_estimated_cost,
+        remaining_budget=remaining_budget,
+        recommendations=recommendations,
+    )
+
+@app.post("/api/restock-orders", response_model=RestockOrder, status_code=201)
+def create_restock_order(request: CreateRestockOrderRequest):
+    """Submit a restock order for the chosen items/quantities (direct submit)."""
+    if not request.items:
+        raise HTTPException(status_code=400, detail="At least one item is required")
+
+    inventory_by_sku = {item["sku"]: item for item in inventory_items}
+
+    # Merge duplicate SKUs in the request into a single line item instead of
+    # creating separate lines for the same product.
+    quantity_by_sku = {}
+    for req_item in request.items:
+        quantity_by_sku[req_item.sku] = quantity_by_sku.get(req_item.sku, 0) + req_item.quantity
+
+    resolved_items = []
+    for sku, quantity in quantity_by_sku.items():
+        inv = inventory_by_sku.get(sku)
+        if inv is None:
+            raise HTTPException(status_code=404, detail=f"Item with sku '{sku}' not found in inventory")
+        resolved_items.append({
+            "sku": sku,
+            "name": inv["name"],
+            "quantity": quantity,
+            "unit_cost": inv["unit_cost"],
+        })
+
+    total_value = round(sum(i["quantity"] * i["unit_cost"] for i in resolved_items), 2)
+    now = datetime.now()
+    order_date = now.isoformat(timespec="seconds")
+    expected_delivery = (now + timedelta(days=RESTOCK_LEAD_TIME_DAYS)).isoformat(timespec="seconds")
+
+    # Lock the read-modify-append so concurrent submissions can't compute the
+    # same sequence number (sync endpoints run in a thread pool).
+    with restock_orders_lock:
+        seq = len(restock_orders) + 1
+        order_id = str(uuid.uuid4())
+        new_order = {
+            "id": order_id,
+            "order_number": f"RESTOCK-{now.year}-{seq:04d}",
+            "items": resolved_items,
+            "status": "Placed",
+            "order_date": order_date,
+            "lead_time_days": RESTOCK_LEAD_TIME_DAYS,
+            "expected_delivery": expected_delivery,
+            "total_value": total_value,
+            "notes": request.notes,
+        }
+        restock_orders.append(new_order)
+        return new_order
+
+@app.get("/api/restock-orders", response_model=List[RestockOrder])
+def get_restock_orders():
+    """Get all submitted restock orders"""
+    return restock_orders
 
 if __name__ == "__main__":
     import uvicorn
