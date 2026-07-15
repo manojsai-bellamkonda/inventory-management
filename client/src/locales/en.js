@@ -4,6 +4,7 @@ export default {
     overview: 'Overview',
     inventory: 'Inventory',
     orders: 'Orders',
+    restocking: 'Restocking',
     finance: 'Finance',
     demandForecast: 'Demand Forecast',
     companyName: 'Catalyst Components',
@@ -106,6 +107,7 @@ export default {
     title: 'Orders',
     description: 'View and manage customer orders',
     allOrders: 'All Orders',
+    submittedOrders: 'Submitted Restock Orders',
     totalOrders: 'Total Orders',
     totalRevenue: 'Total Revenue',
     avgOrderValue: 'Avg Order Value',
@@ -125,8 +127,35 @@ export default {
       totalValue: 'Total Value',
       status: 'Status',
       expectedDelivery: 'Expected Delivery',
-      actualDelivery: 'Actual Delivery'
+      actualDelivery: 'Actual Delivery',
+      leadTime: 'Lead Time'
     }
+  },
+
+  // Restocking
+  restocking: {
+    title: 'Restocking',
+    description: 'Get budget-aware recommendations for what to reorder next',
+    budgetLabel: 'Restocking Budget',
+    totalCost: 'Total Cost',
+    remainingBudget: 'Remaining Budget',
+    overBudget: 'Over budget',
+    recommendedItems: 'Recommended Items',
+    urgent: 'Urgent',
+    table: {
+      sku: 'SKU',
+      itemName: 'Item Name',
+      trend: 'Trend',
+      suggestedQty: 'Suggested Qty',
+      unitCost: 'Unit Cost',
+      lineTotal: 'Line Total'
+    },
+    placeOrder: 'Place Order',
+    placingOrder: 'Placing Order...',
+    successMessage: 'Order {orderNumber} placed successfully. Expected delivery: {expectedDelivery}.',
+    errorMessage: 'Failed to place restock order',
+    noRecommendations: 'No recommendations available for this budget',
+    loadError: 'Failed to load recommendations'
   },
 
   // Finance/Spending

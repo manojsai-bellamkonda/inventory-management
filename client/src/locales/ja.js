@@ -4,6 +4,7 @@ export default {
     overview: '概要',
     inventory: '在庫',
     orders: '注文',
+    restocking: '再発注',
     finance: '財務',
     demandForecast: '需要予測',
     companyName: '触媒コンポーネンツ',
@@ -106,6 +107,7 @@ export default {
     title: '注文',
     description: '顧客注文の表示と管理',
     allOrders: 'すべての注文',
+    submittedOrders: '送信済み再発注',
     totalOrders: '総注文数',
     totalRevenue: '総収益',
     avgOrderValue: '平均注文額',
@@ -125,8 +127,35 @@ export default {
       totalValue: '合計金額',
       status: 'ステータス',
       expectedDelivery: '予定配達日',
-      actualDelivery: '実際の配達日'
+      actualDelivery: '実際の配達日',
+      leadTime: 'リードタイム'
     }
+  },
+
+  // Restocking
+  restocking: {
+    title: '再発注',
+    description: '予算に基づいた再発注の推奨事項を確認',
+    budgetLabel: '再発注予算',
+    totalCost: '合計金額',
+    remainingBudget: '残り予算',
+    overBudget: '予算超過',
+    recommendedItems: '推奨アイテム',
+    urgent: '緊急',
+    table: {
+      sku: 'SKU',
+      itemName: '品名',
+      trend: '傾向',
+      suggestedQty: '推奨数量',
+      unitCost: '単価',
+      lineTotal: '小計'
+    },
+    placeOrder: '注文する',
+    placingOrder: '注文処理中...',
+    successMessage: '注文 {orderNumber} が正常に作成されました。予定納期: {expectedDelivery}',
+    errorMessage: '再発注の作成に失敗しました',
+    noRecommendations: 'この予算では推奨アイテムがありません',
+    loadError: '推奨事項の読み込みに失敗しました'
   },
 
   // Finance/Spending
