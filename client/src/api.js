@@ -5,7 +5,8 @@ const API_BASE_URL = 'http://localhost:8001/api'
 export const api = {
   async getInventory(filters = {}) {
     const params = new URLSearchParams()
-    if (filters.warehouse && filters.warehouse !== 'all') params.append('warehouse', filters.warehouse)
+    if (filters.warehouse && filters.warehouse !== 'all')
+      params.append('warehouse', filters.warehouse)
     if (filters.category && filters.category !== 'all') params.append('category', filters.category)
 
     const response = await axios.get(`${API_BASE_URL}/inventory?${params.toString()}`)
@@ -19,7 +20,8 @@ export const api = {
 
   async getOrders(filters = {}) {
     const params = new URLSearchParams()
-    if (filters.warehouse && filters.warehouse !== 'all') params.append('warehouse', filters.warehouse)
+    if (filters.warehouse && filters.warehouse !== 'all')
+      params.append('warehouse', filters.warehouse)
     if (filters.category && filters.category !== 'all') params.append('category', filters.category)
     if (filters.status && filters.status !== 'all') params.append('status', filters.status)
     if (filters.month && filters.month !== 'all') params.append('month', filters.month)
@@ -45,7 +47,8 @@ export const api = {
 
   async getDashboardSummary(filters = {}) {
     const params = new URLSearchParams()
-    if (filters.warehouse && filters.warehouse !== 'all') params.append('warehouse', filters.warehouse)
+    if (filters.warehouse && filters.warehouse !== 'all')
+      params.append('warehouse', filters.warehouse)
     if (filters.category && filters.category !== 'all') params.append('category', filters.category)
     if (filters.status && filters.status !== 'all') params.append('status', filters.status)
     if (filters.month && filters.month !== 'all') params.append('month', filters.month)
@@ -120,5 +123,16 @@ export const api = {
   async getRestockOrders() {
     const response = await axios.get(`${API_BASE_URL}/restock-orders`)
     return response.data
-  }
+  },
+
+  async getSupplierPricing(supplierId, filters = {}) {
+    const params = new URLSearchParams()
+    if (filters.category && filters.category !== 'all') {
+      params.append('category', filters.category)
+    }
+    let response = await axios.get(
+      `${API_BASE_URL}/suppliers/${supplierId}/pricing?${params.toString()}`
+    )
+    return response.data
+  },
 }

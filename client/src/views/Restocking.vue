@@ -42,7 +42,9 @@
     <div v-else>
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">{{ t('restocking.recommendedItems') }} ({{ recommendations.length }})</h3>
+          <h3 class="card-title">
+            {{ t('restocking.recommendedItems') }} ({{ recommendations.length }})
+          </h3>
         </div>
 
         <div v-if="recommendations.length === 0" class="empty-state">
@@ -62,17 +64,23 @@
             </thead>
             <tbody>
               <tr v-for="item in recommendations" :key="item.item_sku">
-                <td><strong>{{ item.item_sku }}</strong></td>
+                <td>
+                  <strong>{{ item.item_sku }}</strong>
+                </td>
                 <td>
                   {{ item.item_name }}
-                  <span v-if="item.is_urgent" class="badge danger urgent-badge">{{ t('restocking.urgent') }}</span>
+                  <span v-if="item.is_urgent" class="badge danger urgent-badge">{{
+                    t('restocking.urgent')
+                  }}</span>
                 </td>
                 <td>
                   <span :class="['badge', item.trend]">{{ item.trend }}</span>
                 </td>
                 <td>{{ item.suggested_quantity }}</td>
                 <td>{{ formatCurrency(item.unit_cost, currentCurrency) }}</td>
-                <td><strong>{{ formatCurrency(item.estimated_cost, currentCurrency) }}</strong></td>
+                <td>
+                  <strong>{{ formatCurrency(item.estimated_cost, currentCurrency) }}</strong>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -164,15 +172,15 @@ export default {
       successMessage.value = null
       try {
         const orderData = {
-          items: recommendations.value.map(r => ({
+          items: recommendations.value.map((r) => ({
             sku: r.item_sku,
-            quantity: r.suggested_quantity
-          }))
+            quantity: r.suggested_quantity,
+          })),
         }
         const order = await api.submitRestockOrder(orderData)
         successMessage.value = t('restocking.successMessage', {
           orderNumber: order.order_number,
-          expectedDelivery: formatDeliveryDate(order.expected_delivery)
+          expectedDelivery: formatDeliveryDate(order.expected_delivery),
         })
         await loadRecommendations()
       } catch (err) {
@@ -201,9 +209,9 @@ export default {
       submitting,
       submitError,
       successMessage,
-      placeOrder
+      placeOrder,
     }
-  }
+  },
 }
 </script>
 

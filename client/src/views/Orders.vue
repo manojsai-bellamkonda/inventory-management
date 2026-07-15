@@ -51,7 +51,9 @@
             </thead>
             <tbody>
               <tr v-for="order in restockOrders" :key="order.id">
-                <td class="col-order-number"><strong>{{ order.order_number }}</strong></td>
+                <td class="col-order-number">
+                  <strong>{{ order.order_number }}</strong>
+                </td>
                 <td class="col-items">
                   <details class="items-details">
                     <summary class="items-summary">
@@ -60,7 +62,10 @@
                     <div class="items-dropdown">
                       <div v-for="(item, idx) in order.items" :key="idx" class="item-entry">
                         <span class="item-name">{{ translateProductName(item.name) }}</span>
-                        <span class="item-meta">{{ t('orders.quantity') }}: {{ item.quantity }} @ {{ currencySymbol }}{{ item.unit_cost }}</span>
+                        <span class="item-meta"
+                          >{{ t('orders.quantity') }}: {{ item.quantity }} @ {{ currencySymbol
+                          }}{{ item.unit_cost }}</span
+                        >
                       </div>
                     </div>
                   </details>
@@ -73,7 +78,9 @@
                 <td class="col-date">{{ formatDate(order.order_date) }}</td>
                 <td class="col-date">{{ formatDate(order.expected_delivery) }}</td>
                 <td class="col-lead-time">{{ order.lead_time_days }} days</td>
-                <td class="col-value"><strong>{{ currencySymbol }}{{ order.total_value.toLocaleString() }}</strong></td>
+                <td class="col-value">
+                  <strong>{{ currencySymbol }}{{ order.total_value.toLocaleString() }}</strong>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -99,7 +106,9 @@
             </thead>
             <tbody>
               <tr v-for="order in orders" :key="order.id">
-                <td class="col-order-number"><strong>{{ order.order_number }}</strong></td>
+                <td class="col-order-number">
+                  <strong>{{ order.order_number }}</strong>
+                </td>
                 <td class="col-customer">{{ translateCustomerName(order.customer) }}</td>
                 <td class="col-items">
                   <details class="items-details">
@@ -109,7 +118,10 @@
                     <div class="items-dropdown">
                       <div v-for="(item, idx) in order.items" :key="idx" class="item-entry">
                         <span class="item-name">{{ translateProductName(item.name) }}</span>
-                        <span class="item-meta">{{ t('orders.quantity') }}: {{ item.quantity }} @ {{ currencySymbol }}{{ item.unit_price }}</span>
+                        <span class="item-meta"
+                          >{{ t('orders.quantity') }}: {{ item.quantity }} @ {{ currencySymbol
+                          }}{{ item.unit_price }}</span
+                        >
                       </div>
                     </div>
                   </details>
@@ -121,7 +133,9 @@
                 </td>
                 <td class="col-date">{{ formatDate(order.order_date) }}</td>
                 <td class="col-date">{{ formatDate(order.expected_delivery) }}</td>
-                <td class="col-value"><strong>{{ currencySymbol }}{{ order.total_value.toLocaleString() }}</strong></td>
+                <td class="col-value">
+                  <strong>{{ currencySymbol }}{{ order.total_value.toLocaleString() }}</strong>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -160,7 +174,7 @@ export default {
       selectedLocation,
       selectedCategory,
       selectedStatus,
-      getCurrentFilters
+      getCurrentFilters,
     } = useFilters()
 
     const loadOrders = async () => {
@@ -207,16 +221,16 @@ export default {
     }
 
     const getOrdersByStatus = (status) => {
-      return orders.value.filter(order => order.status === status)
+      return orders.value.filter((order) => order.status === status)
     }
 
     const getOrderStatusClass = (status) => {
       const statusMap = {
-        'Delivered': 'success',
-        'Shipped': 'info',
-        'Processing': 'warning',
-        'Backordered': 'danger',
-        'Placed': 'info'
+        Delivered: 'success',
+        Shipped: 'info',
+        Processing: 'warning',
+        Backordered: 'danger',
+        Placed: 'info',
       }
       return statusMap[status] || 'info'
     }
@@ -227,7 +241,7 @@ export default {
       return new Date(dateString).toLocaleDateString(locale, {
         year: 'numeric',
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
       })
     }
 
@@ -249,9 +263,9 @@ export default {
       formatDate,
       currencySymbol,
       translateProductName,
-      translateCustomerName
+      translateCustomerName,
     }
-  }
+  },
 }
 </script>
 
@@ -343,7 +357,9 @@ export default {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   padding: 0.75rem;
   z-index: 10;
   min-width: 300px;
